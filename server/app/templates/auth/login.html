@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Login — Endpoint Central</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"/>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"/>
+  <style>
+    body {
+      background: #12141a;
+      min-height: 100vh;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .login-card {
+      background: #1a1d23;
+      border: 1px solid #2e3340;
+      border-radius: .75rem;
+      padding: 2.5rem;
+      width: 100%;
+      max-width: 400px;
+    }
+    .login-brand {
+      font-size: 1.5rem; font-weight: 700;
+      color: #4e7cff;
+      margin-bottom: 2rem;
+    }
+    .form-control {
+      background: #12141a; border-color: #2e3340; color: #c9cdd8;
+    }
+    .form-control:focus {
+      background: #12141a; border-color: #4e7cff; color: #c9cdd8;
+      box-shadow: 0 0 0 .2rem rgba(78,124,255,.2);
+    }
+    .form-label { color: #8891a6; font-size: .875rem; }
+    .btn-primary { background: #4e7cff; border-color: #4e7cff; width: 100%; }
+    .alert-danger { background: rgba(248,113,113,.1); border-color: rgba(248,113,113,.3); color: #f87171; }
+  </style>
+</head>
+<body>
+<div class="login-card">
+  <div class="login-brand text-center">
+    <i class="bi bi-shield-check-fill me-2"></i>Endpoint Central
+  </div>
+  <p class="text-center mb-4" style="color:#6b7490; font-size:.9rem;">
+    Sign in to your account
+  </p>
+
+  {% if error %}
+  <div class="alert alert-danger mb-3">
+    <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ error }}
+  </div>
+  {% endif %}
+
+  <form method="post" action="/login">
+    <div class="mb-3">
+      <label class="form-label" for="username">Username</label>
+      <input id="username" name="username" type="text" class="form-control"
+             placeholder="admin" autocomplete="username" required autofocus/>
+    </div>
+    <div class="mb-4">
+      <label class="form-label" for="password">Password</label>
+      <input id="password" name="password" type="password" class="form-control"
+             placeholder="••••••••" autocomplete="current-password" required/>
+    </div>
+    <button type="submit" class="btn btn-primary">
+      <i class="bi bi-box-arrow-in-right me-2"></i>Sign in
+    </button>
+  </form>
+
+  <p class="text-center mt-4" style="color:#555d72; font-size:.75rem;">
+    Default: admin / Admin@1234
+  </p>
+</div>
+</body>
+</html>

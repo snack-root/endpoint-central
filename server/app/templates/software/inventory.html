@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Software Inventory — Endpoint Central{% endblock %}
+{% block page_title %}Software Inventory{% endblock %}
+
+{% block content %}
+<div class="mb-3">
+  <form method="get" action="/software/inventory" class="d-flex gap-2">
+    <input name="q" type="text" value="{{ q }}" class="form-control"
+           style="max-width:320px;background:#1a1d23;border-color:#2e3340;color:#c9cdd8;"
+           placeholder="Search software by name…"/>
+    <button type="submit" class="btn btn-primary">Search</button>
+    {% if q %}<a href="/software/inventory" class="btn btn-outline-secondary">Clear</a>{% endif %}
+  </form>
+</div>
+
+<div class="card">
+  <div class="card-body p-0">
+    <table class="table table-hover mb-0">
+      <thead>
+        <tr><th>Name</th><th>Version</th><th>Publisher</th><th>Device</th><th>Install Date</th></tr>
+      </thead>
+      <tbody>
+        {% for item in items %}
+        <tr>
+          <td class="fw-medium">{{ item.name }}</td>
+          <td style="font-size:.85rem;color:#8891a6;">{{ item.version or '—' }}</td>
+          <td style="font-size:.85rem;color:#8891a6;">{{ item.publisher or '—' }}</td>
+          <td>
+            {% if item.device %}
+            <a href="/devices/{{ item.device_id }}" style="color:#4e7cff;text-decoration:none;">
+              {{ item.device.hostname }}
+            </a>
+            {% else %}—{% endif %}
+          </td>
+          <td style="font-size:.8rem;color:#6b7490;">{{ item.install_date or '—' }}</td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="5" class="text-center py-5" style="color:#555d72;">
+            {% if q %}No software matching "{{ q }}"{% else %}No software inventory yet{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% block title %}Alerts — Endpoint Central{% endblock %}
+{% block page_title %}Alerts{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+  <!-- Create Rule -->
+  <div class="col-md-4">
+    <div class="card">
+      <div class="card-header"><i class="bi bi-plus-circle me-2"></i>New Alert Rule</div>
+      <div class="card-body">
+        <form method="post" action="/alerts/rules">
+          <div class="mb-3">
+            <label class="form-label" style="font-size:.8rem;color:#8891a6;">Rule Name</label>
+            <input name="name" type="text" class="form-control form-control-sm"
+                   style="background:#12141a;border-color:#2e3340;color:#c9cdd8;"
+                   placeholder="High CPU" required/>
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              <label class="form-label" style="font-size:.8rem;color:#8891a6;">Metric</label>
+              <select name="metric_type" class="form-select form-select-sm"
+                      style="background:#12141a;border-color:#2e3340;color:#c9cdd8;">
+                <option value="cpu">CPU</option>
+                <option value="ram">RAM</option>
+                <option value="disk">Disk</option>
+                <option value="offline">Offline</option>
+              </select>
+            </div>
+            <div class="col-3">
+              <label class="form-label" style="font-size:.8rem;color:#8891a6;">Op</label>
+              <select name="operator" class="form-select form-select-sm"
+                      style="background:#12141a;border-color:#2e3340;color:#c9cdd8;">
+                <option value=">">></option>
+                <option value=">=">>=</option>
+                <option value="<"><</option>
+              </select>
+            </div>
+            <div class="col-3">
+              <label class="form-label" style="font-size:.8rem;color:#8891a6;">%</label>
+              <input name="threshold" type="number" class="form-control form-control-sm"
+                     style="background:#12141a;border-color:#2e3340;color:#c9cdd8;"
+                     value="85" min="0" max="100"/>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" style="font-size:.8rem;color:#8891a6;">Duration (sec)</label>
+            <input name="duration_seconds" type="number" class="form-control form-control-sm"
+                   style="background:#12141a;border-color:#2e3340;color:#c9cdd8;" value="60"/>
+          </div>
+          <button type="submit" class="btn btn-primary btn-sm w-100">Create Rule</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Rules list -->
+    <div class="card mt-3">
+      <div class="card-header">Rules</div>
+      <div class="card-body p-0">
+        {% for r in rules %}
+        <div class="d-flex align-items-center justify-content-between p-3"
+             style="border-bottom:1px solid #2e3340;font-size:.85rem;">
+          <div>
+            <strong>{{ r.name }}</strong>
+            <div style="color:#6b7490;font-size:.75rem;">
+              {{ r.metric_type }} {{ r.operator }} {{ r.threshold }}%
+            </div>
+          </div>
+          <form method="post" action="/alerts/rules/{{ r.id }}/delete"
+                onsubmit="return confirm('Delete rule?')">
+            <button type="submit" class="btn btn-sm btn-outline-danger">
+              <i class="bi bi-trash"></i>
+            </button>
+          </form>
+        </div>
+        {% else %}
+        <div class="p-3 text-center" style="color:#555d72;font-size:.85rem;">No rules</div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Active alerts -->
+  <div class="col-md-8">
+    <div class="card">
+      <div class="card-header">
+        <i class="bi bi-bell-fill me-2 text-warning"></i>
+        Open Alerts
+        <span class="badge ms-2" style="background:rgba(251,191,36,.2);color:#fbbf24;">
+          {{ open_alerts | length }}
+        </span>
+      </div>
+      <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+          <thead>
+            <tr><th>Device</th><th>Rule</th><th>Severity</th><th>Value</th><th>Since</th><th></th></tr>
+          </thead>
+          <tbody>
+            {% for a in open_alerts %}
+            <tr>
+              <td>
+                <a href="/devices/{{ a.device_id }}" style="color:#4e7cff;text-decoration:none;">
+                  {{ a.device.hostname if a.device else a.device_id[:8] }}
+                </a>
+              </td>
+              <td style="font-size:.85rem;">{{ a.rule.name if a.rule else '—' }}</td>
+              <td>
+                {% if a.severity == 'critical' %}
+                  <span class="badge" style="background:rgba(248,113,113,.15);color:#f87171;">critical</span>
+                {% else %}
+                  <span class="badge" style="background:rgba(251,191,36,.15);color:#fbbf24;">warning</span>
+                {% endif %}
+              </td>
+              <td>{{ "%.1f"|format(a.triggered_value) }}%</td>
+              <td style="font-size:.8rem;color:#6b7490;">
+                {{ a.triggered_at.strftime('%m/%d %H:%M') }}
+              </td>
+              <td>
+                <form method="post" action="/alerts/{{ a.id }}/resolve">
+                  <button type="submit" class="btn btn-sm btn-outline-success">Resolve</button>
+                </form>
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="6" class="text-center py-5" style="color:#555d72;">
+                <i class="bi bi-check-circle-fill text-success fs-3 d-block mb-2"></i>
+                No open alerts
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

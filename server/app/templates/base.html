@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>{% block title %}Endpoint Central{% endblock %}</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"/>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"/>
+  <script src="https://unpkg.com/htmx.org@1.9.12" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js" defer></script>
+  <style>
+    :root {
+      --sidebar-width: 240px;
+      --ec-primary: #4e7cff;
+      --ec-surface: #1a1d23;
+      --ec-surface2: #22262e;
+      --ec-border: #2e3340;
+    }
+    body { background: #12141a; color: #c9cdd8; }
+    .sidebar {
+      position: fixed; top: 0; left: 0; bottom: 0;
+      width: var(--sidebar-width);
+      background: var(--ec-surface);
+      border-right: 1px solid var(--ec-border);
+      display: flex; flex-direction: column;
+      z-index: 100;
+    }
+    .sidebar-brand {
+      padding: 1.25rem 1.5rem;
+      border-bottom: 1px solid var(--ec-border);
+      font-size: 1.1rem; font-weight: 600;
+      color: var(--ec-primary);
+      text-decoration: none;
+      display: flex; align-items: center; gap: .625rem;
+    }
+    .sidebar-nav { flex: 1; padding: 1rem 0; overflow-y: auto; }
+    .nav-section {
+      font-size: .7rem; font-weight: 600; letter-spacing: .08em;
+      color: #555d72; text-transform: uppercase;
+      padding: .75rem 1.5rem .25rem;
+    }
+    .nav-link {
+      display: flex; align-items: center; gap: .625rem;
+      padding: .5rem 1.5rem; color: #8891a6;
+      border-radius: 0; font-size: .875rem;
+      transition: color .15s, background .15s;
+    }
+    .nav-link:hover { color: #c9cdd8; background: var(--ec-surface2); }
+    .nav-link.active { color: var(--ec-primary); background: rgba(78,124,255,.08); }
+    .nav-link i { width: 18px; text-align: center; font-size: 1rem; }
+    .sidebar-footer {
+      padding: 1rem 1.5rem;
+      border-top: 1px solid var(--ec-border);
+      font-size: .8rem; color: #555d72;
+    }
+    .main-content {
+      margin-left: var(--sidebar-width);
+      min-height: 100vh;
+      display: flex; flex-direction: column;
+    }
+    .topbar {
+      background: var(--ec-surface);
+      border-bottom: 1px solid var(--ec-border);
+      padding: .875rem 2rem;
+      display: flex; align-items: center; justify-content: space-between;
+      position: sticky; top: 0; z-index: 50;
+    }
+    .topbar-title { font-size: 1.05rem; font-weight: 500; color: #e2e5ee; }
+    .page-body { padding: 2rem; flex: 1; }
+    .card {
+      background: var(--ec-surface);
+      border: 1px solid var(--ec-border);
+      border-radius: .5rem;
+    }
+    .card-header {
+      background: var(--ec-surface2);
+      border-bottom: 1px solid var(--ec-border);
+      padding: .875rem 1.25rem;
+      font-weight: 500; font-size: .9rem;
+    }
+    .stat-card {
+      background: var(--ec-surface);
+      border: 1px solid var(--ec-border);
+      border-radius: .5rem;
+      padding: 1.25rem;
+    }
+    .stat-card .stat-value { font-size: 2rem; font-weight: 700; line-height: 1; }
+    .stat-card .stat-label { font-size: .8rem; color: #6b7490; margin-top: .25rem; }
+    .badge-online { color: #34d399; background: rgba(52,211,153,.1); }
+    .badge-offline { color: #f87171; background: rgba(248,113,113,.1); }
+    .table { --bs-table-bg: transparent; --bs-table-color: #c9cdd8; }
+    .table th { color: #6b7490; font-size: .8rem; font-weight: 500; border-color: var(--ec-border); }
+    .table td { border-color: var(--ec-border); font-size: .875rem; vertical-align: middle; }
+    .table-hover tbody tr:hover { --bs-table-hover-bg: var(--ec-surface2); }
+    .btn-primary { background: var(--ec-primary); border-color: var(--ec-primary); }
+    .htmx-indicator { display: none; }
+    .htmx-request .htmx-indicator { display: inline-block; }
+    .os-icon-windows { color: #00adef; }
+    .os-icon-linux { color: #f5a623; }
+    .status-dot {
+      display: inline-block; width: 8px; height: 8px;
+      border-radius: 50%; margin-right: 6px;
+    }
+    .status-dot.online { background: #34d399; box-shadow: 0 0 6px #34d39966; }
+    .status-dot.offline { background: #f87171; }
+  </style>
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+
+{% if user is defined and user %}
+<!-- Sidebar -->
+<nav class="sidebar">
+  <a href="/dashboard" class="sidebar-brand">
+    <i class="bi bi-shield-check-fill"></i> Endpoint Central
+  </a>
+  <div class="sidebar-nav">
+
+    <div class="nav-section">Overview</div>
+    <a href="/dashboard" class="nav-link {% if request.url.path == '/dashboard' %}active{% endif %}">
+      <i class="bi bi-speedometer2"></i> Dashboard
+    </a>
+
+    <div class="nav-section">Inventory</div>
+    <a href="/devices" class="nav-link {% if '/devices' in request.url.path %}active{% endif %}">
+      <i class="bi bi-pc-display"></i> Devices
+    </a>
+    <a href="/domains" class="nav-link {% if '/domains' in request.url.path %}active{% endif %}">
+      <i class="bi bi-diagram-3"></i> Domains
+    </a>
+    <a href="/groups" class="nav-link {% if '/groups' in request.url.path %}active{% endif %}">
+      <i class="bi bi-collection"></i> Groups
+    </a>
+    <a href="/monitoring" class="nav-link {% if '/monitoring' in request.url.path %}active{% endif %}">
+      <i class="bi bi-graph-up-arrow"></i> Monitoring
+    </a>
+
+    <div class="nav-section">Management</div>
+    <a href="/policies" class="nav-link {% if '/policies' in request.url.path %}active{% endif %}">
+      <i class="bi bi-shield-exclamation"></i> Policies
+    </a>
+    <a href="/scripts" class="nav-link {% if '/scripts' in request.url.path %}active{% endif %}">
+      <i class="bi bi-code-slash"></i> Scripts
+    </a>
+
+    <div class="nav-section">Software</div>
+    <a href="/software/inventory" class="nav-link {% if '/software/inventory' in request.url.path %}active{% endif %}">
+      <i class="bi bi-boxes"></i> SW Inventory
+    </a>
+    <a href="/software/deploy" class="nav-link {% if '/software/deploy' in request.url.path %}active{% endif %}">
+      <i class="bi bi-cloud-arrow-down"></i> SW Deploy
+    </a>
+
+    <div class="nav-section">Operations</div>
+    <a href="/alerts" class="nav-link {% if '/alerts' in request.url.path %}active{% endif %}">
+      <i class="bi bi-bell"></i> Alerts
+    </a>
+    <a href="/audit" class="nav-link {% if '/audit' in request.url.path %}active{% endif %}">
+      <i class="bi bi-journal-text"></i> Audit Logs
+    </a>
+    <a href="/reports" class="nav-link {% if '/reports' in request.url.path %}active{% endif %}">
+      <i class="bi bi-file-earmark-bar-graph"></i> AI Reports
+    </a>
+  </div>
+  <div class="sidebar-footer">
+    <i class="bi bi-person-circle me-1"></i> {{ user.username }}
+    <form action="/logout" method="post" class="d-inline ms-2">
+      <button type="submit" class="btn btn-link btn-sm p-0 text-danger">Logout</button>
+    </form>
+  </div>
+</nav>
+{% endif %}
+
+<!-- Main -->
+<div class="{% if user is defined and user %}main-content{% endif %}">
+  {% if user is defined and user %}
+  <div class="topbar">
+    <span class="topbar-title">{% block page_title %}{% endblock %}</span>
+    <div class="d-flex align-items-center gap-3">
+      <span class="badge bg-secondary">{{ user.role }}</span>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="{% if user is defined and user %}page-body{% endif %}">
+    {% block content %}{% endblock %}
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" defer></script>
+{% block extra_scripts %}{% endblock %}
+</body>
+</html>

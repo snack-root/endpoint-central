@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Audit Logs — Endpoint Central{% endblock %}
+{% block page_title %}Audit Logs{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="card-header"><i class="bi bi-journal-text me-2"></i>Activity Log (last 200)</div>
+  <div class="card-body p-0">
+    <table class="table table-hover mb-0">
+      <thead>
+        <tr><th>Time</th><th>User</th><th>Action</th><th>Resource</th><th>IP</th></tr>
+      </thead>
+      <tbody>
+        {% for log in logs %}
+        <tr>
+          <td style="font-size:.8rem;color:#6b7490;white-space:nowrap;">
+            {{ log.created_at.strftime('%Y-%m-%d %H:%M:%S') }}
+          </td>
+          <td>{{ log.user.username if log.user else 'system' }}</td>
+          <td>
+            {% set action_colors = {'create':'#34d399','delete':'#f87171','deploy':'#4e7cff','login':'#fbbf24','logout':'#8891a6'} %}
+            <span class="badge" style="background:{{ action_colors.get(log.action,'#555') }}22;
+                                       color:{{ action_colors.get(log.action,'#aaa') }};">
+              {{ log.action }}
+            </span>
+          </td>
+          <td>
+            <code style="font-size:.8rem;">{{ log.resource_type }}</code>
+            {% if log.resource_id %}
+            <span style="color:#555d72;font-size:.75rem;"> ({{ log.resource_id[:8] }}…)</span>
+            {% endif %}
+          </td>
+          <td style="font-size:.8rem;color:#6b7490;">{{ log.ip_address or '—' }}</td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="5" class="text-center py-5" style="color:#555d72;">No audit entries yet</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

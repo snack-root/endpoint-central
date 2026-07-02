@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Devices — Endpoint Central{% endblock %}
+{% block page_title %}Device Inventory{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+  <div>
+    <span class="text-muted">{{ total }} device{{ 's' if total != 1 }}</span>
+  </div>
+  <div class="d-flex gap-2">
+    <input type="text" class="form-control form-control-sm" placeholder="Filter by hostname..."
+           style="width:220px; background:#1a1d23; border-color:#2e3340; color:#c9cdd8;"
+           hx-get="/devices" hx-target="#device-table-body" hx-trigger="keyup changed delay:300ms"
+           name="q"/>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body p-0">
+    <table class="table table-hover mb-0">
+      <thead>
+        <tr>
+          <th>Status</th>
+          <th>Hostname</th>
+          <th>OS</th>
+          <th>IP Address</th>
+          <th>User</th>
+          <th>Domain</th>
+          <th>Group</th>
+          <th>Last Seen</th>
+        </tr>
+      </thead>
+      <tbody id="device-table-body">
+        {% for device in devices %}
+        <tr style="cursor:pointer;" onclick="location.href='/devices/{{ device.id }}'">
+          <td>
+            <span class="status-dot {{ device.status }}"></span>
+            <span style="font-size:.8rem; color: {{ '#34d399' if device.status == 'online' else '#f87171' }}">
+              {{ device.status }}
+            </span>
+          </td>
+          <td class="fw-medium">{{ device.hostname }}</td>
+          <td>
+            {% if device.os_type == 'windows' %}
+              <i class="bi bi-windows os-icon-windows me-1"></i>{{ device.os_version or 'Windows' }}
+            {% else %}
+              <i class="bi bi-ubuntu os-icon-linux me-1"></i>{{ device.os_version or 'Linux' }}
+            {% endif %}
+          </td>
+          <td><code style="font-size:.8rem;">{{ device.ip_address or '—' }}</code></td>
+          <td>{{ device.username or '—' }}</td>
+          <td>{{ device.domain.name if device.domain else '—' }}</td>
+          <td>{{ device.group.name if device.group else '—' }}</td>
+          <td style="font-size:.8rem; color:#6b7490;">
+            {% if device.last_seen %}
+              {{ device.last_seen.strftime('%Y-%m-%d %H:%M') }}
+            {% else %}—{% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="8" class="text-center py-5" style="color:#555d72;">
+            <i class="bi bi-pc-display fs-3 d-block mb-2"></i>
+            No devices registered yet.<br/>
+            <small>Deploy an agent to a Windows or Linux machine to get started.</small>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if pages > 1 %}
+  <div class="card-footer d-flex justify-content-center gap-2" style="background:var(--ec-surface2); border-top:1px solid var(--ec-border);">
+    {% for p in range(1, pages + 1) %}
+    <a href="/devices?page={{ p }}" class="btn btn-sm {{ 'btn-primary' if p == page else 'btn-outline-secondary' }}">{{ p }}</a>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

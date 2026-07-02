@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}AI Reports — Endpoint Central{% endblock %}
+{% block page_title %}AI Report Generator{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+  <!-- Generate form -->
+  <div class="col-md-3">
+    <div class="card">
+      <div class="card-header"><i class="bi bi-cpu me-2 text-primary"></i>Generate Report</div>
+      <div class="card-body">
+        <p style="font-size:.8rem;color:#8891a6;">
+          Uses <strong>llama3.1:8b</strong> via Ollama to generate an executive report
+          from live system data.
+        </p>
+        <form method="post" action="/reports/generate">
+          <div class="mb-3">
+            <label class="form-label" style="font-size:.8rem;color:#8891a6;">Report Period</label>
+            <select name="report_type" class="form-select form-select-sm"
+                    style="background:#12141a;border-color:#2e3340;color:#c9cdd8;">
+              <option value="daily">Daily</option>
+              <option value="weekly">Weekly</option>
+              <option value="monthly">Monthly</option>
+            </select>
+          </div>
+          <button type="submit" class="btn btn-primary btn-sm w-100">
+            <i class="bi bi-magic me-1"></i>Generate
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Report list -->
+  <div class="col-md-9">
+    <div class="card">
+      <div class="card-header"><i class="bi bi-file-earmark-bar-graph me-2"></i>Reports</div>
+      <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+          <thead><tr><th>Title</th><th>Type</th><th>Status</th><th>Generated</th><th></th></tr></thead>
+          <tbody>
+            {% for r in reports %}
+            <tr>
+              <td class="fw-medium">{{ r.title }}</td>
+              <td>
+                {% set type_colors = {'daily':'#4e7cff','weekly':'#a78bfa','monthly':'#34d399'} %}
+                <span class="badge" style="background:{{ type_colors.get(r.report_type,'#555') }}22;
+                                           color:{{ type_colors.get(r.report_type,'#aaa') }};">
+                  {{ r.report_type }}
+                </span>
+              </td>
+              <td>
+                {% if r.status == 'completed' %}
+                  <span class="badge badge-online">completed</span>
+                {% elif r.status == 'pending' %}
+                  <span class="badge" style="background:#fbbf2422;color:#fbbf24;">
+                    <span class="spinner-border spinner-border-sm me-1" style="width:.6rem;height:.6rem;"></span>
+                    generating…
+                  </span>
+                {% else %}
+                  <span class="badge badge-offline">{{ r.status }}</span>
+                {% endif %}
+              </td>
+              <td style="font-size:.8rem;color:#6b7490;">
+                {{ r.generated_at.strftime('%Y-%m-%d %H:%M') }}
+              </td>
+              <td class="d-flex gap-1">
+                {% if r.status == 'completed' %}
+                <a href="/reports/{{ r.id }}" class="btn btn-sm btn-outline-secondary">
+                  <i class="bi bi-eye"></i>
+                </a>
+                <a href="/reports/{{ r.id }}/pdf" class="btn btn-sm btn-outline-primary">
+                  <i class="bi bi-file-pdf"></i>
+                </a>
+                {% endif %}
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="5" class="text-center py-5" style="color:#555d72;">
+                <i class="bi bi-file-earmark-bar-graph fs-3 d-block mb-2"></i>
+                No reports yet. Generate your first one!
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

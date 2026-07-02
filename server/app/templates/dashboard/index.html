@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — Endpoint Central{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+
+{% block content %}
+<!-- Stat cards -->
+<div class="row g-3 mb-4">
+  <div class="col-md-3">
+    <div class="stat-card">
+      <div class="stat-value text-white">{{ stats.total }}</div>
+      <div class="stat-label"><i class="bi bi-pc-display me-1"></i>Total Devices</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card">
+      <div class="stat-value" style="color:#34d399;">{{ stats.online }}</div>
+      <div class="stat-label"><i class="bi bi-wifi me-1"></i>Online</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card">
+      <div class="stat-value" style="color:#f87171;">{{ stats.offline }}</div>
+      <div class="stat-label"><i class="bi bi-wifi-off me-1"></i>Offline</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card">
+      <div class="stat-value" style="color:#fbbf24;">{{ open_alerts | length }}</div>
+      <div class="stat-label"><i class="bi bi-bell me-1"></i>Open Alerts</div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3">
+  <!-- Open Alerts -->
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-header d-flex align-items-center justify-content-between">
+        <span><i class="bi bi-bell-fill me-2 text-warning"></i>Open Alerts</span>
+        <a href="/alerts" class="btn btn-sm btn-outline-secondary">View All</a>
+      </div>
+      <div class="card-body p-0">
+        {% if open_alerts %}
+        <table class="table table-hover mb-0">
+          <thead>
+            <tr>
+              <th>Device</th><th>Rule</th><th>Severity</th><th>Value</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for alert in open_alerts[:8] %}
+            <tr>
+              <td>{{ alert.device.hostname if alert.device else '—' }}</td>
+              <td>{{ alert.rule.name if alert.rule else '—' }}</td>
+              <td>
+                {% if alert.severity == 'critical' %}
+                  <span class="badge" style="background:rgba(248,113,113,.15);color:#f87171;">critical</span>
+                {% else %}
+                  <span class="badge" style="background:rgba(251,191,36,.15);color:#fbbf24;">warning</span>
+                {% endif %}
+              </td>
+              <td>{{ "%.1f"|format(alert.triggered_value) }}%</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <div class="p-4 text-center" style="color:#555d72;">
+          <i class="bi bi-check-circle-fill text-success fs-4 d-block mb-2"></i>
+          No open alerts
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent Audit -->
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-header d-flex align-items-center justify-content-between">
+        <span><i class="bi bi-journal-text me-2"></i>Recent Activity</span>
+        <a href="/audit" class="btn btn-sm btn-outline-secondary">View All</a>
+      </div>
+      <div class="card-body p-0">
+        {% if recent_audits %}
+        <table class="table table-hover mb-0">
+          <thead><tr><th>Time</th><th>User</th><th>Action</th><th>Resource</th></tr></thead>
+          <tbody>
+            {% for log in recent_audits %}
+            <tr>
+              <td style="font-size:.8rem;color:#6b7490;">
+                {{ log.created_at.strftime('%m/%d %H:%M') }}
+              </td>
+              <td>{{ log.user.username if log.user else 'system' }}</td>
+              <td><code style="font-size:.8rem;">{{ log.action }}</code></td>
+              <td>{{ log.resource_type }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <div class="p-4 text-center" style="color:#555d72;">
+          <i class="bi bi-inbox fs-4 d-block mb-2"></i>No activity yet
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

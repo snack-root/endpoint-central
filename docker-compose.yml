@@ -1,0 +1,152 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: ec_postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-ec_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ec_pass}
+      POSTGRES_DB: ${POSTGRES_DB:-endpoint_central}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ec_user} -d ${POSTGRES_DB:-endpoint_central}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ec_net
+
+  redis:
+    image: redis:7-alpine
+    container_name: ec_redis
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ec_net
+
+  api-service:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: ec_api
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-ec_user}:${POSTGRES_PASSWORD:-ec_pass}@postgres:5432/${POSTGRES_DB:-endpoint_central}
+      REDIS_URL: redis://redis:6379/0
+      SECRET_KEY: ${SECRET_KEY:-dev}
+      SESSION_COOKIE_NAME: ec_session
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./server:/app
+      - software_packages:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - ec_net
+
+  agent-gateway:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: ec_gateway
+    command: uvicorn app.gateway:app --host 0.0.0.0 --port 8001 --reload
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-ec_user}:${POSTGRES_PASSWORD:-ec_pass}@postgres:5432/${POSTGRES_DB:-endpoint_central}
+      REDIS_URL: redis://redis:6379/0
+      SECRET_KEY: ${SECRET_KEY:-changeme-in-production-very-long-secret}
+      GATEWAY_API_KEY: ${GATEWAY_API_KEY:-dev1}
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./server:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - ec_net
+
+  command-worker:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: ec_command_worker
+    command: python -m app.workers.command_worker
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-ec_user}:${POSTGRES_PASSWORD:-ec_pass}@postgres:5432/${POSTGRES_DB:-endpoint_central}
+      REDIS_URL: redis://redis:6379/0
+      GATEWAY_API_KEY: ${GATEWAY_API_KEY:-dev1}
+    volumes:
+      - ./server:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - ec_net
+
+  alert-worker:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: ec_alert_worker
+    command: python -m app.workers.alert_worker
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-ec_user}:${POSTGRES_PASSWORD:-ec_pass}@postgres:5432/${POSTGRES_DB:-endpoint_central}
+      REDIS_URL: redis://redis:6379/0
+    volumes:
+      - ./server:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - ec_net
+
+  report-worker:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: ec_report_worker
+    command: python -m app.workers.report_worker
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-ec_user}:${POSTGRES_PASSWORD:-ec_pass}@postgres:5432/${POSTGRES_DB:-endpoint_central}
+      REDIS_URL: redis://redis:6379/0
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.1:4b}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./server:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - ec_net
+
+volumes:
+  postgres_data:
+  redis_data:
+  software_packages:
+
+networks:
+  ec_net:
+    driver: bridge

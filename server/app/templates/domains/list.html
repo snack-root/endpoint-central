@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}Domains — Endpoint Central{% endblock %}
+{% block page_title %}Domain Management{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+  <!-- Create form -->
+  <div class="col-md-4">
+    <div class="card">
+      <div class="card-header"><i class="bi bi-plus-circle me-2"></i>New Domain</div>
+      <div class="card-body">
+        <form method="post" action="/domains">
+          <div class="mb-3">
+            <label class="form-label" style="font-size:.8rem;color:#8891a6;">Name</label>
+            <input name="name" type="text" class="form-control form-control-sm"
+                   style="background:#12141a;border-color:#2e3340;color:#c9cdd8;" required/>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" style="font-size:.8rem;color:#8891a6;">Parent Domain</label>
+            <select name="parent_id" class="form-select form-select-sm"
+                    style="background:#12141a;border-color:#2e3340;color:#c9cdd8;">
+              <option value="">— Root —</option>
+              {% for d in domains %}
+              <option value="{{ d.id }}">{{ d.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" style="font-size:.8rem;color:#8891a6;">Description</label>
+            <textarea name="description" class="form-control form-control-sm" rows="2"
+                      style="background:#12141a;border-color:#2e3340;color:#c9cdd8;"></textarea>
+          </div>
+          <button type="submit" class="btn btn-primary btn-sm w-100">Create Domain</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Domain tree -->
+  <div class="col-md-8">
+    <div class="card">
+      <div class="card-header"><i class="bi bi-diagram-3 me-2"></i>Domain Tree</div>
+      <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+          <thead><tr><th>Name</th><th>Parent</th><th>Description</th><th></th></tr></thead>
+          <tbody>
+            {% set parent_map = {} %}
+            {% for d in domains %}
+              {% if d.parent_id %}
+                {% set _ = parent_map.update({d.id: d.parent_id}) %}
+              {% endif %}
+            {% endfor %}
+            {% for d in domains %}
+            <tr>
+              <td>
+                {% if d.parent_id %}<span class="ms-3" style="color:#555d72;">└ </span>{% endif %}
+                <i class="bi bi-diagram-3 me-1" style="color:#4e7cff;"></i>
+                <strong>{{ d.name }}</strong>
+              </td>
+              <td style="color:#6b7490;font-size:.85rem;">
+                {% for parent in domains if parent.id == d.parent_id %}{{ parent.name }}{% endfor %}
+                {% if not d.parent_id %}—{% endif %}
+              </td>
+              <td style="font-size:.85rem;color:#8891a6;">{{ d.description or '—' }}</td>
+              <td>
+                <form method="post" action="/domains/{{ d.id }}/delete"
+                      onsubmit="return confirm('Delete domain {{ d.name }}?')">
+                  <button type="submit" class="btn btn-sm btn-outline-danger">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </form>
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="4" class="text-center py-5" style="color:#555d72;">
+                <i class="bi bi-diagram-3 fs-3 d-block mb-2"></i>No domains yet
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

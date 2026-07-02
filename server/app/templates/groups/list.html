@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}Groups — Endpoint Central{% endblock %}
+{% block page_title %}Group Management{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+  <div class="col-md-4">
+    <div class="card">
+      <div class="card-header"><i class="bi bi-plus-circle me-2"></i>New Group</div>
+      <div class="card-body">
+        <form method="post" action="/groups">
+          <div class="mb-3">
+            <label class="form-label" style="font-size:.8rem;color:#8891a6;">Name</label>
+            <input name="name" type="text" class="form-control form-control-sm"
+                   style="background:#12141a;border-color:#2e3340;color:#c9cdd8;" required/>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" style="font-size:.8rem;color:#8891a6;">Domain</label>
+            <select name="domain_id" class="form-select form-select-sm"
+                    style="background:#12141a;border-color:#2e3340;color:#c9cdd8;">
+              <option value="">— None —</option>
+              {% for d in domains %}
+              <option value="{{ d.id }}">{{ d.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" style="font-size:.8rem;color:#8891a6;">Description</label>
+            <textarea name="description" class="form-control form-control-sm" rows="2"
+                      style="background:#12141a;border-color:#2e3340;color:#c9cdd8;"></textarea>
+          </div>
+          <button type="submit" class="btn btn-primary btn-sm w-100">Create Group</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-8">
+    <div class="card">
+      <div class="card-header"><i class="bi bi-collection me-2"></i>Groups</div>
+      <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+          <thead><tr><th>Name</th><th>Domain</th><th>Description</th><th></th></tr></thead>
+          <tbody>
+            {% for g in groups %}
+            <tr>
+              <td><i class="bi bi-collection me-1" style="color:#a78bfa;"></i><strong>{{ g.name }}</strong></td>
+              <td style="font-size:.85rem;color:#8891a6;">
+                {{ g.domain.name if g.domain else '—' }}
+              </td>
+              <td style="font-size:.85rem;color:#8891a6;">{{ g.description or '—' }}</td>
+              <td>
+                <form method="post" action="/groups/{{ g.id }}/delete"
+                      onsubmit="return confirm('Delete group {{ g.name }}?')">
+                  <button type="submit" class="btn btn-sm btn-outline-danger">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </form>
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="4" class="text-center py-5" style="color:#555d72;">
+                No groups yet
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

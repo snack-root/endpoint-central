@@ -1,0 +1,229 @@
+{% extends "base.html" %}
+{% block title %}Policies — Endpoint Central{% endblock %}
+{% block page_title %}Policy Engine{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+  <div class="col-md-4">
+    <div class="card">
+      <div class="card-header"><i class="bi bi-plus-circle me-2"></i>New Policy</div>
+      <div class="card-body">
+        <form method="post" action="/policies">
+          <div class="mb-3">
+            <label class="form-label" style="font-size:.8rem;color:#8891a6;">Name</label>
+            <input name="name" type="text" class="form-control form-control-sm"
+                   style="background:#12141a;border-color:#2e3340;color:#c9cdd8;" required/>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" style="font-size:.8rem;color:#8891a6;">Type</label>
+            <select name="policy_type" id="policyType" class="form-select form-select-sm"
+                    style="background:#12141a;border-color:#2e3340;color:#c9cdd8;"
+                    onchange="updateConfigPlaceholder(this.value)">
+              <option value="disable_usb">Disable USB</option>
+              <option value="disable_cmd">Disable CMD</option>
+              <option value="disable_task_manager">Disable Task Manager</option>
+              <option value="wallpaper">Wallpaper</option>
+              <option value="custom_registry">Custom Registry</option>
+              <option value="linux_sysctl">Linux Sysctl</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" style="font-size:.8rem;color:#8891a6;">
+              Config (JSON)
+            </label>
+            <textarea name="config_json" id="configJson" class="form-control form-control-sm" rows="4"
+                      style="background:#12141a;border-color:#2e3340;color:#c9cdd8;font-family:monospace;font-size:.8rem;"
+                      placeholder='{"enabled": true}'></textarea>
+          </div>
+          <button type="submit" class="btn btn-primary btn-sm w-100">Create Policy</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+<div class="col-md-8">
+    <div class="card">
+      <div class="card-header"><i class="bi bi-shield-exclamation me-2"></i>Policies</div>
+      <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+          <thead><tr><th>Name</th><th>Type</th><th>Status</th><th>Assignments</th><th></th></tr></thead>
+          <tbody>
+            {% for p in policies %}
+            <tr>
+              <td class="fw-medium">{{ p.name }}</td>
+              <td><code style="font-size:.8rem;">{{ p.policy_type }}</code></td>
+              <td>
+                {% if p.is_active %}
+                  <span class="badge badge-online">active</span>
+                {% else %}
+                  <span class="badge badge-offline">inactive</span>
+                {% endif %}
+              </td>
+              <td style="font-size:.8rem;color:#6b7490;">
+                {{ p.assignments | length }} target(s)
+              </td>
+              <td class="text-end">
+                <button type="button" class="btn btn-sm btn-outline-primary"
+                        data-bs-toggle="collapse" data-bs-target="#assignRow{{ p.id }}">
+                  <i class="bi bi-bullseye"></i> Assign
+                </button>
+                <form method="post" action="/policies/{{ p.id }}/delete"
+                      onsubmit="return confirm('Delete policy?')" class="d-inline">
+                  <button type="submit" class="btn btn-sm btn-outline-danger">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </form>
+              </td>
+            </tr>
+            <tr class="collapse" id="assignRow{{ p.id }}">
+              <td colspan="5" style="background:#0e1016;">
+                <div class="p-3">
+                  <form method="post" action="/policies/{{ p.id }}/assign" class="row g-2 align-items-end mb-3">
+                    <div class="col-auto">
+                      <label class="form-label" style="font-size:.75rem;color:#8891a6;">Target Type</label>
+                      <select name="target_type" class="form-select form-select-sm" style="background:#12141a;border-color:#2e3340;color:#c9cdd8;" required>
+                        <option value="device">Device</option>
+                        <option value="group">Group</option>
+                        <option value="domain">Domain</option>
+                      </select>
+                    </div>
+                    <div class="col-auto" style="min-width:260px;">
+                      <label class="form-label" style="font-size:.75rem;color:#8891a6;">Target</label>
+                      <select name="target_id" class="form-select form-select-sm" style="background:#12141a;border-color:#2e3340;color:#c9cdd8;" required>
+                        <optgroup label="Devices">
+                          {% for d in devices %}
+                          <option value="{{ d.id }}">{{ d.hostname }}</option>
+                          {% endfor %}
+                        </optgroup>
+                        <optgroup label="Groups">
+                          {% for g in groups %}
+                          <option value="{{ g.id }}">{{ g.name }}</option>
+                          {% endfor %}
+                        </optgroup>
+                        <optgroup label="Domains">
+                          {% for dom in domains %}
+                          <option value="{{ dom.id }}">{{ dom.name }}</option>
+                          {% endfor %}
+                        </optgroup>
+                      </select>
+                    </div>
+                    <div class="col-auto">
+                      <button type="submit" class="btn btn-sm btn-primary">Apply to Target</button>
+                    </div>
+                  </form>
+
+                  {% if p.assignments %}
+                  <table class="table table-sm mb-0" style="font-size:.8rem;">
+                    <thead><tr><th>Target Type</th><th>Target ID</th><th>Assigned At</th><th>Trạng thái</th><th></th></tr></thead>
+                    <tbody>
+                      {% for a in p.assignments %}
+                      <tr>
+                        <td>{{ a.target_type }}</td>
+                        <td style="color:#6b7490;">{{ a.target_id }}</td>
+                        <td style="color:#6b7490;">{{ a.assigned_at.strftime("%Y-%m-%d %H:%M") if a.assigned_at else "" }}</td>
+                        <td>
+                          {% if a.status == "completed" %}
+                            <span class="badge badge-online">✓ Hoàn tất</span>
+                          {% elif a.status == "partial_failure" %}
+                            <span class="badge" style="background:rgba(251,191,36,.15);color:#fbbf24;">⚠ Một phần lỗi</span>
+                          {% elif a.status == "failed" %}
+                            <span class="badge badge-offline">✗ Thất bại</span>
+                          {% else %}
+                            <span class="badge" style="background:rgba(78,124,255,.15);color:#4e7cff;">
+                              <span class="spinner-border spinner-border-sm" style="width:.6rem;height:.6rem;"></span>
+                              Đang chờ phản hồi
+                            </span>
+                          {% endif %}
+                          {% if a.results %}
+                          <a href="#" data-bs-toggle="collapse" data-bs-target="#resultRow{{ a.id }}"
+                             style="font-size:.7rem;color:#6b7490;margin-left:6px;">
+                            ({{ a.results | length }} device{{ "s" if a.results | length != 1 }})
+                          </a>
+                          {% endif %}
+                        </td>
+                        <td class="text-end">
+                          <form method="post" action="/policies/{{ p.id }}/assignments/{{ a.id }}/resend" class="d-inline">
+                            <button type="submit" class="btn btn-sm btn-outline-info" title="Re-dispatch to agent">
+                              <i class="bi bi-arrow-repeat"></i>
+                            </button>
+                          </form>
+                          <form method="post" action="/policies/{{ p.id }}/assignments/{{ a.id }}/delete"
+                                onsubmit="return confirm('Remove this assignment?')" class="d-inline">
+                            <button type="submit" class="btn btn-sm btn-outline-danger">
+                              <i class="bi bi-x-lg"></i>
+                            </button>
+                          </form>
+                        </td>
+                      </tr>
+                      {% if a.results %}
+                      <tr class="collapse" id="resultRow{{ a.id }}">
+                        <td colspan="5" style="background:#070809;padding:0;">
+                          <table class="table table-sm mb-0" style="font-size:.75rem;">
+                            <thead>
+                              <tr>
+                                <th style="padding-left:2rem;">Device</th>
+                                <th>Kết quả</th>
+                                <th>Thông điệp</th>
+                                <th>Thời gian phản hồi</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {% for r in a.results | sort(attribute='applied_at', reverse=true) %}
+                              <tr>
+                                <td style="padding-left:2rem;">
+                                  <i class="bi bi-pc-display me-1" style="color:#6b7490;"></i>
+                                  {{ r.device.hostname if r.device else r.device_id[:8] }}
+                                </td>
+                                <td>
+                                  {% if r.status == "success" %}
+                                    <span style="color:#34d399;"><i class="bi bi-check-circle-fill"></i> Thành công</span>
+                                  {% elif r.status == "failed" %}
+                                    <span style="color:#f87171;"><i class="bi bi-x-circle-fill"></i> Thất bại</span>
+                                  {% else %}
+                                    <span style="color:#6b7490;"><i class="bi bi-hourglass-split"></i> Đang chờ</span>
+                                  {% endif %}
+                                </td>
+                                <td style="color:#8891a6;max-width:300px;">{{ r.message or "—" }}</td>
+                                <td style="color:#555d72;">{{ r.applied_at.strftime("%Y-%m-%d %H:%M:%S") if r.applied_at else "—" }}</td>
+                              </tr>
+                              {% endfor %}
+                            </tbody>
+                          </table>
+                        </td>
+                      </tr>
+                      {% endif %}
+                      {% endfor %}
+                    </tbody>
+                  </table>
+                  {% else %}
+                  <p style="color:#555d72;font-size:.8rem;" class="mb-0">No targets assigned yet.</p>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="5" class="text-center py-5" style="color:#555d72;">No policies yet</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const PLACEHOLDERS = {
+  disable_usb: '{"enabled": true}',
+  disable_cmd: '{"enabled": true}',
+  disable_task_manager: '{"enabled": true}',
+  wallpaper: '{"url": "https://example.com/wallpaper.jpg", "style": "fill"}',
+  custom_registry: '{"key": "HKLM\\\\Software\\\\MyKey", "name": "Value", "data": "1", "type": "REG_DWORD"}',
+  linux_sysctl: '{"key": "net.ipv4.ip_forward", "value": "0"}',
+};
+function updateConfigPlaceholder(type) {
+  document.getElementById('configJson').placeholder = PLACEHOLDERS[type] || '{}';
+}
+</script>
+{% endblock %}

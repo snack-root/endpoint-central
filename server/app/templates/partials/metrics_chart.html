@@ -1,0 +1,49 @@
+{% if metrics %}
+<canvas id="metricsChart" height="120"></canvas>
+<script>
+(function() {
+  const labels = {{ metrics | map(attribute='recorded_at') | map('string') | list | tojson }};
+  const cpu    = {{ metrics | map(attribute='cpu_percent')  | list | tojson }};
+  const ram    = {{ metrics | map(attribute='ram_percent')  | list | tojson }};
+  const disk   = {{ metrics | map(attribute='disk_percent') | list | tojson }};
+
+  const shortLabels = labels.map(l => {
+    const d = new Date(l);
+    return d.getHours().toString().padStart(2,'0') + ':' + d.getMinutes().toString().padStart(2,'0');
+  });
+
+  const ctx = document.getElementById('metricsChart');
+  if (window._metricsChart) window._metricsChart.destroy();
+  window._metricsChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: shortLabels,
+      datasets: [
+        { label: 'CPU %',  data: cpu,  borderColor: '#4e7cff', backgroundColor: 'rgba(78,124,255,.08)',
+          tension: .4, pointRadius: 2, fill: true },
+        { label: 'RAM %',  data: ram,  borderColor: '#a78bfa', backgroundColor: 'rgba(167,139,250,.08)',
+          tension: .4, pointRadius: 2, fill: true },
+        { label: 'Disk %', data: disk, borderColor: '#34d399', backgroundColor: 'rgba(52,211,153,.05)',
+          tension: .4, pointRadius: 2, fill: true },
+      ]
+    },
+    options: {
+      responsive: true,
+      animation: false,
+      scales: {
+        x: { ticks: { color: '#6b7490', font: { size: 10 } }, grid: { color: '#2e3340' } },
+        y: { min: 0, max: 100, ticks: { color: '#6b7490', font: { size: 10 } }, grid: { color: '#2e3340' } }
+      },
+      plugins: {
+        legend: { labels: { color: '#8891a6', font: { size: 11 } } }
+      }
+    }
+  });
+})();
+</script>
+{% else %}
+<div class="text-center py-5" style="color:#555d72;">
+  <i class="bi bi-graph-up fs-3 d-block mb-2"></i>
+  No metrics collected yet. Agent heartbeat will populate this.
+</div>
+{% endif %}

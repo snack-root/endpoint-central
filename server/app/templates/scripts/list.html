@@ -1,0 +1,275 @@
+{% extends "base.html" %}
+{% block title %}Scripts — Endpoint Central{% endblock %}
+{% block page_title %}Script Repository{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+  <!-- New Script -->
+  <div class="col-md-5">
+    <div class="card">
+      <div class="card-header"><i class="bi bi-plus-circle me-2"></i>New Script</div>
+      <div class="card-body">
+        <form method="post" action="/scripts">
+          <div class="row g-2 mb-3">
+            <div class="col-8">
+              <label class="form-label" style="font-size:.8rem;color:#8891a6;">Name</label>
+              <input name="name" type="text" class="form-control form-control-sm"
+                     style="background:#12141a;border-color:#2e3340;color:#c9cdd8;" required/>
+            </div>
+            <div class="col-4">
+              <label class="form-label" style="font-size:.8rem;color:#8891a6;">Type</label>
+              <select name="script_type" class="form-select form-select-sm"
+                      style="background:#12141a;border-color:#2e3340;color:#c9cdd8;">
+                <option value="powershell">PowerShell</option>
+                <option value="cmd">CMD</option>
+                <option value="bash">Bash</option>
+                <option value="python">Python</option>
+              </select>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" style="font-size:.8rem;color:#8891a6;">Content</label>
+            <textarea name="content" class="form-control form-control-sm" rows="8"
+                      style="background:#0d0f14;border-color:#2e3340;color:#c9cdd8;font-family:monospace;font-size:.8rem;"
+                      placeholder="# Write your script here" required></textarea>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" style="font-size:.8rem;color:#8891a6;">Description</label>
+            <input name="description" type="text" class="form-control form-control-sm"
+                   style="background:#12141a;border-color:#2e3340;color:#c9cdd8;"/>
+          </div>
+          <button type="submit" class="btn btn-primary btn-sm w-100">Save Script</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Script list + deploy -->
+  <div class="col-md-7">
+    <div class="card mb-4">
+      <div class="card-header"><i class="bi bi-code-slash me-2"></i>Repository</div>
+      <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+          <thead><tr><th>Name</th><th>Type</th><th>Description</th><th>Deploy</th><th></th></tr></thead>
+          <tbody>
+            {% for s in scripts %}
+            <tr>
+              <td class="fw-medium">{{ s.name }}</td>
+              <td>
+                {% set colors = {'powershell': '#4e7cff', 'cmd': '#fbbf24', 'bash': '#34d399', 'python': '#a78bfa'} %}
+                <span class="badge" style="background:{{ colors.get(s.script_type, '#555') }}22;color:{{ colors.get(s.script_type, '#aaa') }};">
+                  {{ s.script_type }}
+                </span>
+              </td>
+              <td style="font-size:.8rem;color:#8891a6;">{{ s.description or '—' }}</td>
+              <td>
+                <button class="btn btn-sm btn-outline-primary"
+                        onclick="openDeploy('{{ s.id }}', '{{ s.name }}')">
+                  <i class="bi bi-send me-1"></i>Deploy
+                </button>
+              </td>
+              <td>
+                <form method="post" action="/scripts/{{ s.id }}/delete"
+                      onsubmit="return confirm('Delete script?')">
+                  <button type="submit" class="btn btn-sm btn-outline-danger">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </form>
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="5" class="text-center py-5" style="color:#555d72;">No scripts yet</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Deployment history + per-device response table -->
+    <div class="card">
+      <div class="card-header d-flex align-items-center justify-content-between">
+        <span><i class="bi bi-clock-history me-2"></i>Deployment history & feedback</span>
+        <button class="btn btn-sm btn-outline-secondary" onclick="location.reload()">
+          <i class="bi bi-arrow-clockwise"></i>
+        </button>
+      </div>
+      <div class="card-body p-0">
+        {% if deployments %}
+        <table class="table table-hover mb-0">
+          <thead>
+            <tr>
+              <th>Script</th><th>Target</th><th>Status</th><th>Date</th><th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for d in deployments %}
+            {% set logs = d.execution_logs %}
+            {% set success_count = logs | selectattr('status', 'equalto', 'success') | list | length %}
+            {% set failed_count = logs | selectattr('status', 'equalto', 'failed') | list | length %}
+            {% set pending_count = logs | selectattr('status', 'equalto', 'pending') | list | length %}
+            <tr>
+              <td class="fw-medium">{{ d.script.name if d.script else '—' }}</td>
+              <td style="font-size:.8rem;color:#8891a6;">{{ d.target_type }}</td>
+              <td>
+                {% if d.status == 'completed' %}
+                  <span class="badge badge-online">✓ Success ({{ success_count }})</span>
+                {% elif d.status == 'partial_failure' %}
+                  <span class="badge" style="background:rgba(251,191,36,.15);color:#fbbf24;">
+                    ⚠ {{ success_count }} OK / {{ failed_count }} lỗi
+                  </span>
+                {% elif d.status == 'failed' %}
+                  <span class="badge badge-offline">✗ Failed ({{ failed_count }})</span>
+                {% else %}
+                  <span class="badge" style="background:rgba(78,124,255,.15);color:#4e7cff;">
+                    <span class="spinner-border spinner-border-sm" style="width:.6rem;height:.6rem;"></span>
+                    Pending ({{ pending_count }})
+                  </span>
+                {% endif %}
+                {% if logs %}
+                <a href="#" data-bs-toggle="collapse" data-bs-target="#deployRow{{ d.id }}"
+                   style="font-size:.7rem;color:#6b7490;margin-left:6px;">
+                  ({{ logs | length }} device{{ "s" if logs | length != 1 }})
+                </a>
+                {% endif %}
+              </td>
+              <td style="font-size:.8rem;color:#6b7490;">
+                {{ d.deployed_at.strftime("%Y-%m-%d %H:%M") if d.deployed_at else "" }}
+              </td>
+              <td></td>
+            </tr>
+            {% if logs %}
+            <tr class="collapse" id="deployRow{{ d.id }}">
+              <td colspan="5" style="background:#070809;padding:0;">
+                <table class="table table-sm mb-0" style="font-size:.75rem;">
+                  <thead>
+                    <tr>
+                      <th style="padding-left:2rem;">Device</th>
+                      <th>Kết quả</th>
+                      <th>Exit code</th>
+                      <th>Output</th>
+                      <th>Thời gian</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for log in logs | sort(attribute='executed_at', reverse=true) %}
+                    <tr>
+                      <td style="padding-left:2rem;">
+                        <i class="bi bi-pc-display me-1" style="color:#6b7490;"></i>
+                        {{ log.device.hostname if log.device else log.device_id[:8] }}
+                      </td>
+                      <td>
+                        {% if log.status == "success" %}
+                          <span style="color:#34d399;"><i class="bi bi-check-circle-fill"></i> Thành công</span>
+                        {% elif log.status == "failed" %}
+                          <span style="color:#f87171;"><i class="bi bi-x-circle-fill"></i> Thất bại</span>
+                        {% else %}
+                          <span style="color:#6b7490;"><i class="bi bi-hourglass-split"></i> Đang chờ</span>
+                        {% endif %}
+                      </td>
+                      <td style="color:#8891a6;">{{ log.exit_code if log.exit_code is not none else "—" }}</td>
+                      <td style="color:#8891a6;max-width:280px;">
+                        {% if log.stdout %}
+                        <span title="{{ log.stdout }}" style="cursor:help;">
+                          {{ log.stdout[:60] }}{{ "…" if log.stdout | length > 60 }}
+                        </span>
+                        {% elif log.stderr %}
+                        <span title="{{ log.stderr }}" style="cursor:help;color:#f87171;">
+                          {{ log.stderr[:60] }}{{ "…" if log.stderr | length > 60 }}
+                        </span>
+                        {% else %}—{% endif %}
+                      </td>
+                      <td style="color:#555d72;">
+                        {{ log.executed_at.strftime("%H:%M:%S") if log.executed_at else "—" }}
+                      </td>
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </td>
+            </tr>
+            {% endif %}
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <div class="text-center py-5" style="color:#555d72;">
+          <i class="bi bi-clock-history fs-3 d-block mb-2"></i>
+          No History
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Deploy Modal -->
+<div class="modal fade" id="deployModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content" style="background:#1a1d23;border:1px solid #2e3340;">
+      <div class="modal-header" style="border-color:#2e3340;">
+        <h5 class="modal-title">Deploy Script</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <form id="deployForm" method="post">
+        <div class="modal-body">
+          <p id="deployScriptName" class="text-muted mb-3"></p>
+          <div class="mb-3">
+            <label class="form-label" style="font-size:.8rem;color:#8891a6;">Target Type</label>
+            <select name="target_type" id="deployTargetType" class="form-select form-select-sm"
+                    style="background:#12141a;border-color:#2e3340;color:#c9cdd8;"
+                    onchange="filterTargets(this.value)">
+              <option value="device">Device</option>
+              <option value="group">Group</option>
+              <option value="domain">Domain</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" style="font-size:.8rem;color:#8891a6;">Target</label>
+            <select name="target_id" id="deployTargetId" class="form-select form-select-sm"
+                    style="background:#12141a;border-color:#2e3340;color:#c9cdd8;">
+              {% for d in devices %}
+              <option value="{{ d.id }}" data-type="device">{{ d.hostname }} ({{ d.ip_address or '?' }})</option>
+              {% endfor %}
+              {% for g in groups %}
+              <option value="{{ g.id }}" data-type="group" style="display:none;">Group: {{ g.name }}</option>
+              {% endfor %}
+              {% for d in domains %}
+              <option value="{{ d.id }}" data-type="domain" style="display:none;">Domain: {{ d.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer" style="border-color:#2e3340;">
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary btn-sm">
+            <i class="bi bi-send me-1"></i>Deploy Now
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+function openDeploy(scriptId, scriptName) {
+  document.getElementById('deployForm').action = `/scripts/${scriptId}/deploy`;
+  document.getElementById('deployScriptName').textContent = `Script: ${scriptName}`;
+  {% if preselect_device %}
+  document.getElementById('deployTargetType').value = 'device';
+  document.getElementById('deployTargetId').value = '{{ preselect_device }}';
+  {% endif %}
+  new bootstrap.Modal(document.getElementById('deployModal')).show();
+}
+
+function filterTargets(type) {
+  const sel = document.getElementById('deployTargetId');
+  [...sel.options].forEach(opt => {
+    opt.style.display = opt.dataset.type === type ? '' : 'none';
+  });
+  const first = [...sel.options].find(o => o.dataset.type === type);
+  if (first) sel.value = first.value;
+}
+</script>
+{% endblock %}

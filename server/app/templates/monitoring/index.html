@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}Monitoring — Endpoint Central{% endblock %}
+{% block page_title %}Live Monitoring{% endblock %}
+
+{% block content %}
+<div class="mb-3 d-flex align-items-center gap-2">
+  <span class="badge" style="background:rgba(52,211,153,.15);color:#34d399;">
+    <i class="bi bi-circle-fill me-1" style="font-size:.5rem;animation:pulse 1.5s infinite;"></i>
+    Live — refreshes every 30s
+  </span>
+</div>
+
+<div id="monitoring-grid"
+     hx-get="/monitoring"
+     hx-trigger="every 30s"
+     hx-target="#monitoring-grid"
+     hx-swap="outerHTML">
+
+<div class="row g-3">
+  {% for device in devices %}
+  <div class="col-xl-3 col-lg-4 col-md-6">
+    <div class="card h-100" style="border-color:{{ '#34d39944' if device.status == 'online' else '#f8717144' }}">
+      <div class="card-body">
+        <div class="d-flex align-items-center justify-content-between mb-2">
+          <span class="fw-medium" style="font-size:.9rem;">
+            {% if device.os_type == 'windows' %}
+              <i class="bi bi-windows os-icon-windows me-1"></i>
+            {% else %}
+              <i class="bi bi-ubuntu os-icon-linux me-1"></i>
+            {% endif %}
+            {{ device.hostname }}
+          </span>
+          <span class="status-dot {{ device.status }}"></span>
+        </div>
+
+        {% if device.metrics %}
+          {% set m = device.metrics[0] %}
+          {% for label, val, color in [
+              ('CPU', m.cpu_percent, '#4e7cff'),
+              ('RAM', m.ram_percent, '#a78bfa'),
+              ('Disk', m.disk_percent, '#34d399')
+          ] %}
+          <div class="d-flex justify-content-between align-items-center mb-1">
+            <span style="font-size:.7rem;color:#6b7490;width:30px;">{{ label }}</span>
+            <div style="flex:1;height:5px;background:#2e3340;border-radius:3px;margin:0 8px;overflow:hidden;">
+              <div style="width:{{ val or 0 }}%;height:100%;border-radius:3px;
+                background:{{ '#f87171' if (val or 0) > 85 else ('#fbbf24' if (val or 0) > 70 else color) }};"></div>
+            </div>
+            <span style="font-size:.7rem;color:#8891a6;width:36px;text-align:right;">
+              {{ "%.0f"|format(val or 0) }}%
+            </span>
+          </div>
+          {% endfor %}
+        {% else %}
+          <div style="font-size:.8rem;color:#555d72;text-align:center;padding:.5rem 0;">
+            No metrics yet
+          </div>
+        {% endif %}
+
+        <div class="mt-2" style="font-size:.7rem;color:#555d72;">
+          {{ device.ip_address or '' }}
+          {% if device.last_seen %}· {{ device.last_seen.strftime('%H:%M') }}{% endif %}
+        </div>
+      </div>
+      <div class="card-footer p-1 text-center" style="background:transparent;border-top:1px solid var(--ec-border);">
+        <a href="/devices/{{ device.id }}" style="font-size:.75rem;color:#4e7cff;text-decoration:none;">
+          View Details →
+        </a>
+      </div>
+    </div>
+  </div>
+  {% else %}
+  <div class="col-12">
+    <div class="text-center py-5" style="color:#555d72;">
+      <i class="bi bi-graph-up-arrow fs-1 d-block mb-3"></i>
+      No devices online. Deploy agents to start monitoring.
+    </div>
+  </div>
+  {% endfor %}
+</div>
+</div>
+
+<style>
+@keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:.4; } }
+</style>
+{% endblock %}

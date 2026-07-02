@@ -1,0 +1,19 @@
+[Unit]
+Description=Endpoint Central Agent
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/endpoint-central
+EnvironmentFile=/etc/endpoint-central/agent.env
+ExecStart=/opt/endpoint-central/venv/bin/python /opt/endpoint-central/agent.py
+Restart=always
+RestartSec=30
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=ec-agent
+
+[Install]
+WantedBy=multi-user.target
