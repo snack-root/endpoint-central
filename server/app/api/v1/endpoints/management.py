@@ -11,6 +11,8 @@ import json
 from typing import Optional
 
 from fastapi import APIRouter, Request, Form, Depends, UploadFile, File
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.db.session import get_db
 from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse
 from fastapi.templating import Jinja2Templates
 
@@ -32,7 +34,7 @@ templates = Jinja2Templates(directory="app/templates")
 
 @router.get("/policies", response_class=HTMLResponse)
 async def policies_list(
-    request: Request, user: CurrentUser, session: DbSession = None
+    request: Request, user: CurrentUser, session: AsyncSession = Depends(get_db)
 ):
     repo = PolicyRepository(session)
     policies = await repo.list_with_assignments()
@@ -58,7 +60,7 @@ async def policy_create(
     name: str = Form(...),
     policy_type: str = Form(...),
     config_json: str = Form("{}"),
-    session: DbSession = None,
+    session: AsyncSession = Depends(get_db),
 ):
     repo = PolicyRepository(session)
     audit = AuditLogRepository(session)
@@ -79,7 +81,7 @@ async def policy_create(
 @router.post("/policies/{policy_id}/delete")
 async def policy_delete(
     request: Request, policy_id: str, user: CurrentUser,
-    session: DbSession = None,
+    session: AsyncSession = Depends(get_db),
 ):
     repo = PolicyRepository(session)
     policy = await repo.get(policy_id)
@@ -93,7 +95,7 @@ async def policy_assign(
     request: Request, policy_id: str, user: CurrentUser,
     target_type: str = Form(...),
     target_id: str = Form(...),
-    session: DbSession = None,
+    session: AsyncSession = Depends(get_db),
 ):
     from app.models.models import PolicyAssignment
     assignment = PolicyAssignment(
@@ -129,7 +131,7 @@ async def policy_assign(
 @router.post("/policies/{policy_id}/assignments/{assignment_id}/delete")
 async def policy_assignment_delete(
     request: Request, policy_id: str, assignment_id: str, user: CurrentUser,
-    session: DbSession = None,
+    session: AsyncSession = Depends(get_db),
 ):
     from app.models.models import PolicyAssignment
     from sqlalchemy import select as _select
@@ -145,7 +147,7 @@ async def policy_assignment_delete(
 @router.post("/policies/{policy_id}/assignments/{assignment_id}/resend")
 async def policy_assignment_resend(
     request: Request, policy_id: str, assignment_id: str, user: CurrentUser,
-    session: DbSession = None,
+    session: AsyncSession = Depends(get_db),
 ):
     """Re-dispatch an existing assignment — hữu ích khi device offline lúc assign,
     hoặc policy config vừa được sửa và cần áp lại."""
@@ -175,7 +177,7 @@ async def policy_assignment_resend(
 async def scripts_list(
     request: Request, user: CurrentUser,
     deploy_to: Optional[str] = None,
-    session: DbSession = None,
+    session: AsyncSession = Depends(get_db),
 ):
     repo = ScriptRepository(session)
     scripts = await repo.list()
@@ -207,7 +209,7 @@ async def script_create(
     script_type: str = Form(...),
     content: str = Form(...),
     description: Optional[str] = Form(None),
-    session: DbSession = None,
+    session: AsyncSession = Depends(get_db),
 ):
     repo = ScriptRepository(session)
     audit = AuditLogRepository(session)
@@ -227,7 +229,7 @@ async def script_deploy(
     request: Request, script_id: str, user: CurrentUser,
     target_type: str = Form(...),
     target_id: str = Form(...),
-    session: DbSession = None,
+    session: AsyncSession = Depends(get_db),
 ):
     deploy_repo = ScriptDeploymentRepository(session)
     audit = AuditLogRepository(session)
@@ -256,7 +258,7 @@ async def script_deploy(
 @router.post("/scripts/{script_id}/delete")
 async def script_delete(
     request: Request, script_id: str, user: CurrentUser,
-    session: DbSession = None,
+    session: AsyncSession = Depends(get_db),
 ):
     repo = ScriptRepository(session)
     script = await repo.get(script_id)
@@ -272,7 +274,7 @@ async def sw_inventory(
     request: Request, user: CurrentUser,
     q: Optional[str] = None,
     device: Optional[str] = None,
-    session: DbSession = None,
+    session: AsyncSession = Depends(get_db),
 ):
     repo = SoftwareInventoryRepository(session)
     if q:
@@ -298,7 +300,7 @@ async def sw_inventory(
 
 @router.get("/software/deploy", response_class=HTMLResponse)
 async def sw_deploy_page(
-    request: Request, user: CurrentUser, session: DbSession = None
+    request: Request, user: CurrentUser, session: AsyncSession = Depends(get_db)
 ):
     pkg_repo = SoftwarePackageRepository(session)
     deploy_repo = SoftwareDeploymentRepository(session)
@@ -324,7 +326,7 @@ async def sw_upload(
     name: str = Form(...),
     version: Optional[str] = Form(None),
     file: UploadFile = File(...),
-    session: DbSession = None,
+    session: AsyncSession = Depends(get_db),
 ):
     import os
     from pathlib import Path
@@ -348,7 +350,7 @@ async def sw_deploy(
     request: Request, package_id: str, user: CurrentUser,
     target_type: str = Form(...),
     target_id: str = Form(...),
-    session: DbSession = None,
+    session: AsyncSession = Depends(get_db),
 ):
     deploy_repo = SoftwareDeploymentRepository(session)
     audit = AuditLogRepository(session)
@@ -377,7 +379,7 @@ async def sw_deploy(
 async def alerts_page(
     request: Request, user: CurrentUser,
     device: Optional[str] = None,
-    session: DbSession = None,
+    session: AsyncSession = Depends(get_db),
 ):
     rule_repo = AlertRuleRepository(session)
     alert_repo = AlertRepository(session)
@@ -400,7 +402,7 @@ async def alert_rule_create(
     threshold: float = Form(...),
     operator: str = Form(">"),
     duration_seconds: int = Form(60),
-    session: DbSession = None,
+    session: AsyncSession = Depends(get_db),
 ):
     repo = AlertRuleRepository(session)
     await repo.create(
@@ -414,7 +416,7 @@ async def alert_rule_create(
 @router.post("/alerts/rules/{rule_id}/delete")
 async def alert_rule_delete(
     request: Request, rule_id: str, user: CurrentUser,
-    session: DbSession = None,
+    session: AsyncSession = Depends(get_db),
 ):
     repo = AlertRuleRepository(session)
     rule = await repo.get(rule_id)
@@ -426,7 +428,7 @@ async def alert_rule_delete(
 @router.post("/alerts/{alert_id}/resolve")
 async def alert_resolve(
     request: Request, alert_id: str, user: CurrentUser,
-    session: DbSession = None,
+    session: AsyncSession = Depends(get_db),
 ):
     from datetime import datetime, timezone
     repo = AlertRepository(session)
@@ -440,7 +442,7 @@ async def alert_resolve(
 
 @router.get("/audit", response_class=HTMLResponse)
 async def audit_page(
-    request: Request, user: CurrentUser, session: DbSession = None
+    request: Request, user: CurrentUser, session: AsyncSession = Depends(get_db)
 ):
     repo = AuditLogRepository(session)
     logs = await repo.recent(limit=200)
@@ -454,7 +456,7 @@ async def audit_page(
 
 @router.get("/reports", response_class=HTMLResponse)
 async def reports_page(
-    request: Request, user: CurrentUser, session: DbSession = None
+    request: Request, user: CurrentUser, session: AsyncSession = Depends(get_db)
 ):
     repo = ReportRepository(session)
     reports = await repo.list_recent()
@@ -468,7 +470,7 @@ async def reports_page(
 async def report_generate(
     request: Request, user: CurrentUser,
     report_type: str = Form(...),
-    session: DbSession = None,
+    session: AsyncSession = Depends(get_db),
 ):
     repo = ReportRepository(session)
     redis = get_redis()
@@ -488,7 +490,7 @@ async def report_generate(
 @router.get("/reports/{report_id}", response_class=HTMLResponse)
 async def report_view(
     request: Request, report_id: str, user: CurrentUser,
-    session: DbSession = None,
+    session: AsyncSession = Depends(get_db),
 ):
     repo = ReportRepository(session)
     report = await repo.get(report_id)
@@ -503,7 +505,7 @@ async def report_view(
 @router.get("/reports/{report_id}/pdf")
 async def report_pdf(
     request: Request, report_id: str, user: CurrentUser,
-    session: DbSession = None,
+    session: AsyncSession = Depends(get_db),
 ):
     """Export report as PDF using WeasyPrint."""
     repo = ReportRepository(session)
@@ -544,13 +546,19 @@ async def report_pdf(
 
 @router.get("/monitoring", response_class=HTMLResponse)
 async def monitoring_page(
-    request: Request, user: CurrentUser, session: DbSession = None
+    request: Request, user: CurrentUser, session: AsyncSession = Depends(get_db)
 ):
     device_repo = DeviceRepository(session)
-    devices = await device_repo.list_with_relations()
+    rows = await device_repo.list_with_latest_metric()
+    # rows là list[(Device, DeviceMetric|None)]
+    # Đóng gói thành list dict để template dùng dễ hơn
+    devices_with_metric = [
+        {"device": row[0], "metric": row[1]}
+        for row in rows
+    ]
     return templates.TemplateResponse(
         "monitoring/index.html",
-        {"request": request, "user": user, "devices": devices},
+        {"request": request, "user": user, "devices_with_metric": devices_with_metric},
     )
 
 
@@ -561,7 +569,7 @@ async def device_assign(
     request: Request, device_id: str, user: CurrentUser,
     domain_id: Optional[str] = Form(None),
     group_id: Optional[str] = Form(None),
-    session: DbSession = None,
+    session: AsyncSession = Depends(get_db),
 ):
     repo = DeviceRepository(session)
     device = await repo.get(device_id)

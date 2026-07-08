@@ -19,12 +19,24 @@
             <select name="policy_type" id="policyType" class="form-select form-select-sm"
                     style="background:#12141a;border-color:#2e3340;color:#c9cdd8;"
                     onchange="updateConfigPlaceholder(this.value)">
-              <option value="disable_usb">Disable USB</option>
-              <option value="disable_cmd">Disable CMD</option>
-              <option value="disable_task_manager">Disable Task Manager</option>
-              <option value="wallpaper">Wallpaper</option>
-              <option value="custom_registry">Custom Registry</option>
-              <option value="linux_sysctl">Linux Sysctl</option>
+              <optgroup label="🖥️ Desktop">
+                <option value="wallpaper">Wallpaper</option>
+                <option value="screen_lock">Screen Lock</option>
+              </optgroup>
+              <optgroup label="🔒 Bảo mật">
+                <option value="disable_usb">Disable USB</option>
+                <option value="restrict_ssh">Restrict SSH</option>
+                <option value="disable_sudo">Disable Sudo</option>
+                <option value="disable_cmd">Disable CMD (Windows)</option>
+                <option value="disable_task_manager">Disable Task Manager (Windows)</option>
+              </optgroup>
+              <optgroup label="⚙️ Hệ thống">
+                <option value="linux_sysctl">Linux Sysctl</option>
+                <option value="set_hostname">Set Hostname</option>
+                <option value="deploy_file">Deploy File</option>
+                <option value="run_command">Run Command</option>
+                <option value="custom_registry">Custom Registry (Windows)</option>
+              </optgroup>
             </select>
           </div>
           <div class="mb-3">
@@ -215,15 +227,50 @@
 
 <script>
 const PLACEHOLDERS = {
-  disable_usb: '{"enabled": true}',
-  disable_cmd: '{"enabled": true}',
-  disable_task_manager: '{"enabled": true}',
-  wallpaper: '{"url": "https://example.com/wallpaper.jpg", "style": "fill"}',
-  custom_registry: '{"key": "HKLM\\\\Software\\\\MyKey", "name": "Value", "data": "1", "type": "REG_DWORD"}',
-  linux_sysctl: '{"key": "net.ipv4.ip_forward", "value": "0"}',
+  // Desktop
+  wallpaper:
+    '{\n  "url": "https://example.com/wallpaper.jpg",\n  "style": "scaled"\n}',
+  screen_lock:
+    '{\n  "enabled": true,\n  "timeout": 300\n}',
+
+  // Bảo mật
+  disable_usb:
+    '{\n  "enabled": true\n}',
+  restrict_ssh:
+    '{\n  "permit_root": false,\n  "password_auth": false,\n  "allowed_users": ["snack"]\n}',
+  disable_sudo:
+    '{\n  "users": ["intern1", "intern2"],\n  "disable": true\n}',
+  disable_cmd:
+    '{\n  "enabled": true\n}',
+  disable_task_manager:
+    '{\n  "enabled": true\n}',
+
+  // Hệ thống
+  linux_sysctl:
+    '{\n  "key": "net.ipv4.ip_forward",\n  "value": "0"\n}',
+  set_hostname:
+    '{\n  "hostname": "PC-001"\n}',
+  deploy_file:
+    '{\n  "url": "https://example.com/config.conf",\n  "dest": "/etc/myapp/config.conf",\n  "owner": "root",\n  "mode": "644"\n}',
+  run_command:
+    '{\n  "command": "apt-get update -y",\n  "timeout": 60\n}',
+  custom_registry:
+    '{\n  "key": "HKLM\\\\Software\\\\MyKey",\n  "name": "Value",\n  "data": "1",\n  "type": "REG_DWORD"\n}',
 };
+
 function updateConfigPlaceholder(type) {
-  document.getElementById('configJson').placeholder = PLACEHOLDERS[type] || '{}';
+  const ta = document.getElementById('configJson');
+  ta.placeholder = PLACEHOLDERS[type] || '{}';
+  // Auto-fill nếu textarea còn trống
+  if (!ta.value.trim()) {
+    ta.placeholder = PLACEHOLDERS[type] || '{}';
+  }
 }
+
+// Set placeholder cho type đang chọn khi load trang
+document.addEventListener('DOMContentLoaded', () => {
+  const sel = document.getElementById('policyType');
+  if (sel) updateConfigPlaceholder(sel.value);
+});
 </script>
 {% endblock %}

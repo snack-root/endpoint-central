@@ -4,8 +4,10 @@ Authentication endpoints (session-cookie based).
 from fastapi import APIRouter, Request, Response, Form, Depends
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import DbSession, get_optional_user
+from app.db.session import get_db
 from app.services.auth_service import AuthService
 from app.core.config import settings
 
@@ -26,7 +28,7 @@ async def login(
     response: Response,
     username: str = Form(...),
     password: str = Form(...),
-    session: DbSession = None,
+    session: AsyncSession = Depends(get_db),
 ):
     svc = AuthService(session)
     user = await svc.authenticate(username, password)

@@ -2,6 +2,8 @@
 Domain and Group management endpoints.
 """
 from fastapi import APIRouter, Request, Form, Depends
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.db.session import get_db
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from typing import Optional
@@ -17,7 +19,7 @@ templates = Jinja2Templates(directory="app/templates")
 
 @router.get("/domains", response_class=HTMLResponse)
 async def domains_list(
-    request: Request, user: CurrentUser, session: DbSession = None
+    request: Request, user: CurrentUser, session: AsyncSession = Depends(get_db)
 ):
     repo = DomainRepository(session)
     # All domains flat; template builds tree
@@ -34,7 +36,7 @@ async def domain_create(
     name: str = Form(...),
     parent_id: Optional[str] = Form(None),
     description: Optional[str] = Form(None),
-    session: DbSession = None,
+    session: AsyncSession = Depends(get_db),
 ):
     repo = DomainRepository(session)
     audit = AuditLogRepository(session)
@@ -56,7 +58,7 @@ async def domain_delete(
     request: Request,
     domain_id: str,
     user: CurrentUser,
-    session: DbSession = None,
+    session: AsyncSession = Depends(get_db),
 ):
     repo = DomainRepository(session)
     audit = AuditLogRepository(session)
@@ -74,7 +76,7 @@ async def domain_delete(
 
 @router.get("/groups", response_class=HTMLResponse)
 async def groups_list(
-    request: Request, user: CurrentUser, session: DbSession = None
+    request: Request, user: CurrentUser, session: AsyncSession = Depends(get_db)
 ):
     group_repo = GroupRepository(session)
     domain_repo = DomainRepository(session)
@@ -93,7 +95,7 @@ async def group_create(
     name: str = Form(...),
     domain_id: Optional[str] = Form(None),
     description: Optional[str] = Form(None),
-    session: DbSession = None,
+    session: AsyncSession = Depends(get_db),
 ):
     repo = GroupRepository(session)
     audit = AuditLogRepository(session)
@@ -114,7 +116,7 @@ async def group_delete(
     request: Request,
     group_id: str,
     user: CurrentUser,
-    session: DbSession = None,
+    session: AsyncSession = Depends(get_db),
 ):
     repo = GroupRepository(session)
     audit = AuditLogRepository(session)

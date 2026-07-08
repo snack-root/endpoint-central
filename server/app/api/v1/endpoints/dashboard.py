@@ -1,8 +1,10 @@
 from fastapi import APIRouter, Request, Depends
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, DbSession
+from app.db.session import get_db
 from app.services.device_service import DeviceService
 from app.repositories.repositories import AlertRepository, AuditLogRepository
 
@@ -14,7 +16,7 @@ templates = Jinja2Templates(directory="app/templates")
 async def dashboard(
     request: Request,
     user: CurrentUser,
-    session: DbSession = None,
+    session: AsyncSession = Depends(get_db),
 ):
     device_svc = DeviceService(session)
     stats = await device_svc.get_dashboard_stats()

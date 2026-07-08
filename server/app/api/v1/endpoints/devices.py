@@ -4,8 +4,10 @@ Device Inventory web endpoints (HTML + HTMX partials).
 from fastapi import APIRouter, Request, Depends
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, DbSession
+from app.db.session import get_db
 from app.services.device_service import DeviceService
 from app.repositories.repositories import DeviceMetricRepository, DomainRepository, GroupRepository
 
@@ -18,7 +20,7 @@ async def device_list(
     request: Request,
     user: CurrentUser,
     page: int = 1,
-    session: DbSession = None,
+    session: AsyncSession = Depends(get_db),
 ):
     svc = DeviceService(session)
     devices, total = await svc.list_devices(page=page, page_size=50)
@@ -41,7 +43,7 @@ async def device_detail(
     request: Request,
     device_id: str,
     user: CurrentUser,
-    session: DbSession = None,
+    session: AsyncSession = Depends(get_db),
 ):
     svc = DeviceService(session)
     device = await svc.get_device(device_id)
@@ -72,7 +74,7 @@ async def metrics_chart_partial(
     request: Request,
     device_id: str,
     user: CurrentUser,
-    session: DbSession = None,
+    session: AsyncSession = Depends(get_db),
 ):
     """HTMX partial — returns just the chart fragment."""
     svc = DeviceService(session)

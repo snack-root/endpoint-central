@@ -52,13 +52,45 @@ class DeviceRepository(BaseRepository[Device]):
             .options(
                 selectinload(Device.domain),
                 selectinload(Device.group),
-                selectinload(Device.metrics),
             )
             .order_by(Device.hostname)
             .offset(offset)
             .limit(limit)
         )
-        return list(result.scalars().all())
+        devices = list(result.scalars().all())
+        return devices
+
+    async def list_with_latest_metric(self, limit: int = 50) -> list[tuple]:
+        """
+        Trả về list (Device, DeviceMetric | None) với latest metric mỗi device.
+        Dùng lateral join để tránh load toàn bộ metric history.
+        """
+        from sqlalchemy import text
+        # Dùng subquery lấy latest metric_id per device
+        latest_metric_sq = (
+            select(DeviceMetric.device_id, DeviceMetric.id.label("metric_id"))
+            .distinct(DeviceMetric.device_id)
+            .order_by(DeviceMetric.device_id, desc(DeviceMetric.recorded_at))
+            .subquery("latest_metric")
+        )
+        result = await self.session.execute(
+            select(Device, DeviceMetric)
+            .outerjoin(
+                latest_metric_sq,
+                latest_metric_sq.c.device_id == Device.id,
+            )
+            .outerjoin(
+                DeviceMetric,
+                DeviceMetric.id == latest_metric_sq.c.metric_id,
+            )
+            .options(
+                selectinload(Device.domain),
+                selectinload(Device.group),
+            )
+            .order_by(Device.hostname)
+            .limit(limit)
+        )
+        return result.all()
 
     async def set_status(self, device_id: str, status: str) -> None:
         await self.session.execute(
